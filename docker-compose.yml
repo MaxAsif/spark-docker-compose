@@ -1,0 +1,58 @@
+services:
+  spark-master:
+    container_name: spark-master
+    image: apache/spark
+    user: root
+    entrypoint: ['/bin/bash', '/opt/spark/sbin/start-master.sh']
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - ./data:/opt/spark/data:z
+      - ./spark_apps:/opt/spark/apps:z
+      - spark-logs:/opt/spark/spark-events
+    env_file:
+      - .env.spark
+    ports:
+      - '4040:4040'
+      - '8080:8080'
+      - '7077:7077'
+
+
+  # spark-history-server:
+  #   container_name: spark-history
+  #   image: apache/spark
+  #   entrypoint: ['/bin/bash', '/opt/spark/sbin/start-history-server.sh']
+  #   depends_on:
+  #     - spark-master
+  #   env_file:
+  #     - .env.spark
+  #   volumes:
+  #     - spark-logs:/opt/spark/spark-events
+  #   ports:
+  #     - '18080:18080'
+
+  spark-worker:
+    image: apache/spark
+    user: root
+    container_name: spark-worker
+    entrypoint: ['/bin/bash', '/opt/spark/sbin/start-worker.sh', 'spark://spark-master:7077', '--webui-port', '8081']
+    depends_on:
+      - spark-master
+    env_file:
+      - .env.spark
+    volumes:
+      - ./data:/opt/spark/data:z
+      - ./spark_apps:/opt/spark/apps:z
+      - spark-logs:/opt/spark/spark-events
+    ports:
+      - '8081:8081'
+
+volumes:
+  spark-logs:
+
+networks:
+  default:
+    name: spark
